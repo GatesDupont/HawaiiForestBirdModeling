@@ -1,0 +1,68 @@
+# Gates Dupont #
+# 2018         #
+# # # # # # # # 
+
+library(sp)
+library(mgcv)
+
+#----Read in the data----
+df = read.csv("~/Desktop/Research/HawaiiForestBirdSurveyData/HFBS.csv")
+
+#----Re-projecting data; hi4/5;----
+if(T){
+  utm4 = df[df$Projection == "UTM Zone 4",]
+  utm5 = df[df$Projection == "UTM Zone 5",]
+  
+  coords4 = cbind(utm4$EASTING, utm4$NORTHING)
+  spdf4 = SpatialPointsDataFrame(coords4, utm4, proj4string=CRS("+proj=utm +zone=4 +datum=NAD83"))
+  hi4 = spTransform(spdf4, CRS("+init=epsg:4326 +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+  
+  coords5 = cbind(utm5$EASTING, utm5$NORTHING)
+  spdf5 = SpatialPointsDataFrame(coords5, utm5, proj4string=CRS("+proj=utm +zone=5 +datum=NAD83"))
+  hi5 = spTransform(spdf5, CRS("+init=epsg:4326 +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+}
+
+#----Back to normal; df = hi----
+if(T){
+  df4 = as.data.frame(hi4)
+  df5 = as.data.frame(hi5)
+  
+  hi = rbind(df4,df5)
+  
+  hi = data.frame(hi$coords.x1, hi$coords.x2, hi$SpeciesName, 
+                  hi$NumberBirdsDetected, hi$Year, hi$MONTH..,
+                  hi$OBSCODE)
+  colnames(hi) = c('lng', 'lat', 'species', 'nseen', 'year', 'month', 'observer')
+}
+
+#----Species selection----
+hi.sp = hi[hi$species=="Omao",]
+
+#----Anti-species selection----
+hi.z = hi[hi$species!="Omao",]
+
+#----Setting counts to zero----
+hi.z$species = "Omao"
+hi.z$nseen = 0
+
+#----Removing "duplicate" rows from zeros----
+hi.z = unique(hi.z)
+
+#----Plotting just to check----
+plot(hi.z$lng, hi.z$lat)
+points(hi.sp$lng, hi.sp$lat, col="red")
+
+#----Re-combining data to zero-filled for species----
+hi = rbind(hi.sp, hi.z)
+View(hi)
+
+#----Adding colors to nseen----
+hi$nseenCol = NA
+
+for(i in 1:length(hi$nseen)){
+  for(j in 0:9){
+    if(hi$nseen[i] == j){
+      hi$nseenCol[i] = colorRampPalette(c("green", "red"))(10)[j+1]
+    }
+  }
+}
